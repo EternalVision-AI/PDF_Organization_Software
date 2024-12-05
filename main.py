@@ -13,7 +13,7 @@ import fitz  # PyMuPDF
 from PIL import Image
 import pytesseract
 import webbrowser
-from classifier import llm_classifier
+from classifier import process_document
 
 #  Initialize pygame mixer
 pygame.mixer.init()
@@ -56,7 +56,8 @@ def process_file(file_path):
     if not text.strip():  # If no text, use OCR
         text = ocr_image_from_pdf(file_path)
 
-    category = llm_classifier(text)
+    category = process_document(os.path.basename(file_path), text)
+    print(output_folder_base, category, manual_review_folder, os.path.basename(file_path))
     destination_folder = os.path.join(output_folder_base, category if category != "Uncategorized" else manual_review_folder, os.path.basename(file_path))
     try:
       os.makedirs(os.path.dirname(destination_folder), exist_ok=True)
@@ -106,8 +107,8 @@ class App(ctk.CTk):
         self.log.pack(side='top', fill='both', expand=True)
         
         # Configure tags for different categories just once
-        self.log.tag_configure('INFO', foreground='orange')
-        self.log.tag_configure('WARNING', foreground='green')
+        self.log.tag_configure('INFO', foreground='green')
+        self.log.tag_configure('WARNING', foreground='orange')
         self.log.tag_configure('ERROR', foreground='red')
         self.log.tag_configure('DEBUG', foreground='black')
         

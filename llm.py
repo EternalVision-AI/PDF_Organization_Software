@@ -1,35 +1,106 @@
+import sqlite3
 from langchain_ollama import OllamaLLM
 import json
 
-# Load the JSON file
-with open("config.json", "r") as file:
-    config = json.load(file)
-
-# Access the categories array
-categories = config.get("categories", [])
-content = "An agreement to ensure all shared information remains private."
-
-# Initialize the model
+# Ensure necessary NLTK resources are downloaded
+""" Use the LLaMA model to categorize the document. """
 llm = OllamaLLM(model="llama3.1")
 
-# Define the prompt with explicit output instructions
-prompt = f"""
-# Task
-Categorize the provided document content based on the following predefined categories. 
-Provide your answer as the **category name of {categories} only** without any explanation or additional text. If no match is found, respond with Uncategorized.
+def setup_database():
+    """ Set up SQLite database """
+    conn = sqlite3.connect('documents.db')
+    c = conn.cursor()
+    c.execute('''
+    CREATE TABLE IF NOT EXISTS documents (
+        filename TEXT UNIQUE,
+        category TEXT,
+        summary TEXT
+    )
+    ''')
+    conn.commit()
+    conn.close()
 
-# Document Content
-{content}
+def load_config(file_path):
+    """ Load the configuration from a JSON file. """
+    with open(file_path, "r") as file:
+        config = json.load(file)
+    return config
 
-# Categories
-{categories}
+setup_database()
+config = load_config("config.json")
+categories = config.get("categories", [])
+    
+def create_prompt(content, categories):
+    """ Generate a detailed prompt for the model. """
+    categories_str = ', '.join(categories)
+    prompt = f"""
+    # Task
+    Categorize the provided document content based on the following predefined categories:
+    {categories_str}
 
-# Instruction
-Provide your answer as the **category name of {categories} only** without any explanation or additional text. If no match is found, respond with Uncategorized.
-"""
+    Provide your answer as the category name only. If no suitable category is found, respond with 'Uncategorized'.
 
-# Invoke the model with the prompt
-response = llm.invoke(prompt)
+    # Document Content
+    {content}
 
-# Print the response
-print(response.strip())  # Stripping whitespace for cleaner output
+    # Categories
+    {categories_str}
+
+    # Instruction
+    Provide your answer as the category name only without any additional text.
+    """
+    return prompt
+
+def categorize_document(content):
+    
+    prompt = create_prompt(content, categories)
+    response = llm.invoke(prompt)
+    return response.strip()
+
+def create_summary_prompt(content, num_sentences):
+    """
+    Create a prompt for generating a concise summary of the given text.
+    """
+    return (
+        f"### Instruction ###\n"
+        f"You are an expert summarizer. Summarize the given content into exactly {num_sentences} sentences.\n"
+        f"Make sure the summary is concise, accurate, and captures the key points effectively.\n"
+        f"### Content ###\n"
+        f"{content.strip()}\n"
+        f"### Output ###\n"
+        f"[Start your summary here:]\n"
+    )
+
+
+def get_summary(content, num_sentences=1):
+    """ Generate a summary"""
+    prompt = create_summary_prompt(content, num_sentences)
+    response = llm.invoke(prompt)
+    return response.strip()
+    return summary
+
+def save_document_info(filename, category, summary):
+    """ Save or update document information in the database based on filename """
+    conn = sqlite3.connect('documents.db')
+    c = conn.cursor()
+    # Use UPSERT functionality to update existing records or insert new ones
+    c.execute('''
+    INSERT INTO documents (filename, category, summary) VALUES (?, ?, ?)
+    ON CONFLICT(filename) DO UPDATE SET
+    category=excluded.category, summary=excluded.summary
+    ''', (filename, category, summary))
+    conn.commit()
+    conn.close()
+
+def process_document(filename, content):
+    """ Process the document to categorize and summarize """
+    category = categorize_document(content)
+    summary = get_summary(content)
+    save_document_info(filename, category, summary)
+    print(f"Processed {filename} categorized as {category} with summary: {summary}")
+
+if __name__ == "__main__":
+    
+    filename = "Independant_Contract_NDA.pdf"
+    content = "You need to pay $300 for power."
+    process_document(filename, content)

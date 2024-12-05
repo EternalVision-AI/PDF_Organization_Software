@@ -1,22 +1,19 @@
 {
   "categories": [
-    "Research Articles",
+    "Research Papers",
     "Theses and Dissertations",
-    "Conference Proceedings",
-    "Journal Articles",
     "Reports",
     "Financial Documents",
-    "Market Research",
+    "Market Research Documents",
     "Business Plans",
     "Legal Documents",
-    "Medical Documents",
-    "Promotional Materials",
+    "Medical and Healthcare Documents",
+    "Promotional and Marketing Materials",
     "Educational Materials",
     "Technical Documentation",
-    "Entertainment Content",
-    "Property Documents",
-    "Travel Documents",
-    "Employment Contracts",
-    "Agreements"
+    "Creative and Entertainment Content",
+    "Property and Real Estate Documents",
+    "Travel and Transportation Documents",
+    "Employment Documents"
   ]
 }
