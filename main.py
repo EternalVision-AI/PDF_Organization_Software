@@ -13,7 +13,7 @@ import fitz  # PyMuPDF
 from PIL import Image
 import pytesseract
 import webbrowser
-from classifier import process_document
+from classifier import process_document, get_summary, save_document_info
 
 #  Initialize pygame mixer
 pygame.mixer.init()
@@ -36,7 +36,7 @@ ctk.set_default_color_theme("blue")  # You can choose other themes as per your p
 
 
 output_folder_base = 'Output'
-manual_review_folder = 'manual_review'
+manual_review_folder = 'Uncategorized'
 
 def extract_text_from_pdf(file_path):
     with fitz.open(file_path) as doc:
@@ -89,7 +89,7 @@ class App(ctk.CTk):
         # Setup directories
         self.input_folder = 'Input'
         self.output_folder_base = 'Output'
-        self.manual_review_folder = 'manual_review'
+        self.manual_review_folder = 'Uncategorized'
         
         
         self.title("PDF Organization Software")
@@ -154,16 +154,6 @@ class App(ctk.CTk):
     def update_log(self, message, msg_type = "orange"):
         self.log.insert(tk.END, message + "\n", msg_type)
         self.log.yview(tk.END)
-        
-        # Configure tags for different categories
-        # if msg_type == 'INFO':
-        #   self.log.tag_configure('INFO', foreground='orange')
-        # if msg_type == 'WARNING':
-        #   self.log.tag_configure('WARNING', foreground='green')
-        # if msg_type == 'ERROR':
-        #   self.log.tag_configure('ERROR', foreground='red')
-        # if msg_type == 'DEBUG':
-        #   self.log.tag_configure('DEBUG', foreground='black')
 
     def browse_folder(self):
         folder_selected = filedialog.askdirectory()
@@ -217,65 +207,73 @@ class App(ctk.CTk):
         threading.Thread(target=observer.join).start()
 
     def open_manual_classify(self):
-      # Open a new window to handle manual classification
-      manual_window = ctk.CTkToplevel(self)
-      manual_window.title("Manual Classification")
-      manual_window.geometry("600x400")
-      
-      # Set this window as the topmost window with modal effects
-      manual_window.grab_set()
-
-      # Make sure the window stays on top of its parent window
-      manual_window.transient(self)
-
-      label = ctk.CTkLabel(manual_window, text="Manual Classification Interface")
-      label.pack(pady=20)
-
-
-      destination_folder = os.path.join(self.output_folder_base, self.manual_review_folder)
-
-      # Fetch list of unclassified documents
-      unclassified_files = os.listdir(destination_folder)
-      if not unclassified_files:
-          ctk.CTkLabel(manual_window, text="No documents to classify").pack(pady=10)
-          return
-      # Function to handle saving the classification
-      def open_file():
-          selected_file = file_var.get()
-          selected_folder = folder_var.get()
-          src_path = os.path.join(destination_folder, selected_file)
-          webbrowser.open(src_path)
-          
-      open_file_button = ctk.CTkButton(manual_window, text="Open File", command=open_file)
-      open_file_button.pack(pady=10)
+        # Open a new window to handle manual classification
+        manual_window = ctk.CTkToplevel(self)
+        manual_window.title("Manual Classification")
+        manual_window.geometry("300x400")
         
-      # Dropdown for selecting the document
-      file_var = ctk.StringVar(manual_window)
-      file_var.set(unclassified_files[0])
-      file_dropdown = ctk.CTkOptionMenu(manual_window, variable=file_var, values=unclassified_files)
-      file_dropdown.pack(pady=20)
+        # Set this window as the topmost window with modal effects
+        manual_window.grab_set()
 
-      # Dropdown for folder selection
-      folder_var = ctk.StringVar(manual_window)
-      folder_var.set("Select Category")
-      folder_options = categories  # Add more categories as required
-      folder_dropdown = ctk.CTkOptionMenu(manual_window, variable=folder_var, values=folder_options)
-      folder_dropdown.pack(pady=20)
+        # Make sure the window stays on top of its parent window
+        manual_window.transient(self)
 
-      # Function to handle saving the classification
-      def save_classification():
-          selected_file = file_var.get()
-          selected_folder = folder_var.get()
-          src_path = os.path.join(destination_folder, selected_file)
-          dst_path = os.path.join(self.output_folder_base, selected_folder, selected_file)
-          os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-          shutil.move(src_path, dst_path)
-          self.update_log(f"Manually classified and moved: {selected_file} to {selected_folder}", "INFO")
-          manual_window.destroy()
+        label = ctk.CTkLabel(manual_window, text="Manual Classification Interface")
+        label.pack(pady=5)
 
-      # Save Button
-      save_button = ctk.CTkButton(manual_window, text="Save Classification", command=save_classification)
-      save_button.pack(pady=20)
+
+        destination_folder = os.path.join(self.output_folder_base, self.manual_review_folder)
+
+        # Fetch list of unclassified documents
+        unclassified_files = os.listdir(destination_folder)
+        if not unclassified_files:
+            ctk.CTkLabel(manual_window, text="No documents to classify").pack(fill='x', padx=5, pady=5)
+            return
+        
+            
+        # Dropdown for selecting the document
+        file_var = ctk.StringVar(manual_window)
+        file_var.set(unclassified_files[0])
+        file_dropdown = ctk.CTkOptionMenu(manual_window, variable=file_var, values=unclassified_files)
+        file_dropdown.pack(fill='x', padx=5, pady=5)
+
+        # Function to open the selected file.
+        def open_file():
+            selected_file = file_var.get()
+            selected_folder = folder_var.get()
+            src_path = os.path.join(destination_folder, selected_file)
+            webbrowser.open(src_path)
+            
+        open_file_button = ctk.CTkButton(manual_window, text="Open File", command=open_file)
+        open_file_button.pack(fill='x', padx=5, pady=5)
+
+        # Dropdown for folder selection
+        folder_var = ctk.StringVar(manual_window)
+        folder_var.set("Uncategorized")
+        folder_options = categories  # Add more categories as required
+        folder_dropdown = ctk.CTkOptionMenu(manual_window, variable=folder_var, values=folder_options)
+        folder_dropdown.pack(fill='x', padx=5, pady=5)
+
+        # Function to handle saving the classification
+        def save_classification():
+            selected_file = file_var.get()
+            selected_folder = folder_var.get()
+            src_path = os.path.join(destination_folder, selected_file)
+            dst_path = os.path.join(self.output_folder_base, selected_folder, selected_file)
+            os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+            shutil.move(src_path, dst_path)
+            self.update_log(f"Manually classified and moved: {selected_file} to {selected_folder}", "INFO")
+            
+            text = extract_text_from_pdf(src_path)
+            if not text.strip():  # If no text, use OCR
+                text = ocr_image_from_pdf(src_path)
+            summary = get_summary(text)
+            save_document_info(selected_file, selected_folder, summary)
+            #   manual_window.destroy()
+
+        # Save Button
+        save_button = ctk.CTkButton(manual_window, text="Save Classification", command=save_classification)
+        save_button.pack(fill='x', padx=5, pady=5)
 
 
 if __name__ == "__main__":
