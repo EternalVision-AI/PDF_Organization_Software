@@ -13,6 +13,8 @@ import fitz  # PyMuPDF
 from PIL import Image
 import pytesseract
 import webbrowser
+import sqlite3
+
 from classifier import process_document, get_summary, save_document_info
 
 #  Initialize pygame mixer
@@ -34,9 +36,9 @@ ctk.set_default_color_theme("blue")  # You can choose other themes as per your p
 
 
 
-
+input_folder = 'Input'
 output_folder_base = 'Output'
-manual_review_folder = 'Uncategorized'
+uncategorized_folder = 'Uncategorized'
 
 def extract_text_from_pdf(file_path):
     with fitz.open(file_path) as doc:
@@ -57,12 +59,12 @@ def process_file(file_path):
         text = ocr_image_from_pdf(file_path)
 
     category = process_document(os.path.basename(file_path), text)
-    print(output_folder_base, category, manual_review_folder, os.path.basename(file_path))
-    destination_folder = os.path.join(output_folder_base, category if category != "Uncategorized" else manual_review_folder, os.path.basename(file_path))
+    # print(output_folder_base, category, uncategorized_folder, os.path.basename(file_path))
+    destination_folder = os.path.join(output_folder_base, category if category != "Uncategorized" else uncategorized_folder, os.path.basename(file_path))
     try:
       os.makedirs(os.path.dirname(destination_folder), exist_ok=True)
     except:
-      os.makedirs(os.path.dirname(os.path.join(output_folder_base, manual_review_folder)), exist_ok=True)
+      os.makedirs(os.path.dirname(os.path.join(output_folder_base, uncategorized_folder)), exist_ok=True)
       
     shutil.move(file_path, destination_folder)
     return f"Processed and moved: {os.path.basename(file_path)} to {category}", category
@@ -74,37 +76,38 @@ class FolderMonitor(FileSystemEventHandler):
     def on_created(self, event):
         if not event.is_directory:
             self.app.update_log(f"File {os.path.basename(event.src_path)} is added.", "DEBUG")
-            time.sleep(1)
-            result, category = process_file(event.src_path)
-            if category == "Uncategorized":
-                beep_sound.play()
-                self.app.update_log(result, "ERROR")
-            else:
-                self.app.update_log(result, "INFO")
+            # Start a new thread for processing the file
+            threading.Thread(target=self.handle_file, args=(event.src_path,)).start()
+
+    def handle_file(self, file_path):
+        time.sleep(1)  # Simulate delay
+        result, category = process_file(file_path)
+        if category == "Uncategorized":
+            beep_sound.play()
+            self.app.update_log(f"⚠️⚠️⚠️ {result} ⚠️⚠️⚠️", "ERROR")
+        else:
+            self.app.update_log(f"✔️ {result}", "INFO")
 
 class App(ctk.CTk):
     def __init__(self):
         super().__init__()
         
         # Setup directories
-        self.input_folder = 'Input'
-        self.output_folder_base = 'Output'
-        self.manual_review_folder = 'Uncategorized'
-        
+        global input_folder, output_folder_base, uncategorized_folder
         
         self.title("PDF Organization Software")
         self.geometry("1200x700")
 
         # Create two horizontal frames
-        self.left_frame = ctk.CTkFrame(self, width=600)
+        self.left_frame = ctk.CTkFrame(self, width=700)
         self.left_frame.pack(side='left', fill='both', expand=True, padx=10, pady=10)
 
-        self.right_frame = ctk.CTkFrame(self, width=100)
+        self.right_frame = ctk.CTkFrame(self, width=200)
         self.right_frame.pack(side='right', fill='both', expand=True, padx=10, pady=10)
         
         # Dashboard UI
-        self.log = tk.Text(self.left_frame, height=10, width=110)
-        self.log.pack(side='top', fill='both', expand=True)
+        self.log = tk.Text(self.left_frame, height=10)
+        self.log.pack(side='top', fill='both', expand=True, padx=5, pady=5)
         
         # Configure tags for different categories just once
         self.log.tag_configure('INFO', foreground='green')
@@ -112,20 +115,16 @@ class App(ctk.CTk):
         self.log.tag_configure('ERROR', foreground='red')
         self.log.tag_configure('DEBUG', foreground='black')
         
-        # self.file_listbox = tk.Listbox(self.left_frame, height=10)
-        # self.file_listbox.pack(pady=20, fill='both', expand=True)
-        # self.update_file_list()
-
-        
         # Settings UI
         # Entry for the input folder path
-        self.input_folder_entry = ctk.CTkEntry(self.right_frame, placeholder_text=f"Input Folder Path: {self.input_folder}")
+        self.input_folder_entry = ctk.CTkEntry(self.right_frame, placeholder_text=f"{os.path.join(os.getcwd(), input_folder)}")
         self.input_folder_entry.pack(fill='x', padx=5, pady=5)
-
-        # Button to browse for folder
-        self.browse_button = ctk.CTkButton(self.right_frame, text="Browse", command=self.browse_folder)
-        self.browse_button.pack(fill='x', padx=5, pady=5)
-
+        self.input_folder_entry.configure(state="disabled")
+        # Button to browse for input folder
+        self.browse_input_button = ctk.CTkButton(self.right_frame, text="Browse Central Input Folder", command=self.browse_input_folder)
+        self.browse_input_button.pack(fill='x', padx=5, pady=5)
+        
+        
         
         self.learning_mode = ctk.CTkSwitch(self.right_frame, text="Learning Mode")
         self.learning_mode.pack(padx=5, pady=5)
@@ -155,38 +154,48 @@ class App(ctk.CTk):
         self.log.insert(tk.END, message + "\n", msg_type)
         self.log.yview(tk.END)
 
-    def browse_folder(self):
+    def browse_input_folder(self):
         folder_selected = filedialog.askdirectory()
         if folder_selected:
+            self.input_folder_entry.configure(state="normal")
             self.input_folder_entry.delete(0, "end")
             self.input_folder_entry.insert(0, folder_selected)
 
             # Disable the entry and browse button to lock the setting
             self.input_folder_entry.configure(state="disabled")
-            self.input_folder = folder_selected
-            # self.browse_button.configure(state="disabled")
+            input_folder = folder_selected
+            # self.browse_input_button.configure(state="disabled")
             # self.lock_button.configure(state="disabled")
 
     def open_selected_file(self):
       # Ask the user to select a file
-      filename = filedialog.askopenfilename(initialdir=self.output_folder_base, title="Select file", filetypes=[("PDF files", "*.pdf")])
+      filename = filedialog.askopenfilename(initialdir=output_folder_base, title="Select file", filetypes=[("PDF files", "*.pdf")])
       # Check if a file was selected
       if filename:
           # Open the file with the default application associated with PDF files on the user's system
           webbrowser.open(filename)
+                 
                        
     def perform_search(self):
         search_query = self.search_entry.get().lower()
-        found_files = []
-        for root, dirs, files in os.walk(self.output_folder_base):
-            for file in files:
-                if search_query in file.lower():
-                    found_files.append(os.path.join(root, file))
+        connection = sqlite3.connect('documents.db')
+        cursor = connection.cursor()
+        # Fetch data from database where any of filename, category, or summary contains the search query
+        query = '''
+            SELECT filename, category, summary 
+            FROM documents 
+            WHERE filename LIKE ? OR category LIKE ? OR summary LIKE ?
+        '''
+        pattern = '%' + search_query + '%'
+        cursor.execute(query, (pattern, pattern, pattern))
+        found_files = cursor.fetchall()
 
         self.search_results.delete(0, tk.END)  # Clear previous search results
         if found_files:
-            for file in found_files:
-                self.search_results.insert(tk.END, file)  # Add files to the listbox
+            for filename, category, summary in found_files:
+                # Format the result as "Category -> Filename: Summary"
+                result = f"{category} -> {filename}: {summary}"
+                self.search_results.insert(tk.END, result)  # Add files to the listbox
         else:
             self.search_results.insert(tk.END, "No documents found.")
 
@@ -201,9 +210,11 @@ class App(ctk.CTk):
     def start_monitoring(self):
         observer = Observer()
         event_handler = FolderMonitor(self)
-        observer.schedule(event_handler, self.input_folder, recursive=False)
+        observer.schedule(event_handler, input_folder, recursive=False)
         observer.start()
         self.start_button.configure(state='disabled')
+        self.update_log(f"🔎 Monitoring...", "WARNING")
+        
         threading.Thread(target=observer.join).start()
 
     def open_manual_classify(self):
@@ -221,8 +232,7 @@ class App(ctk.CTk):
         label = ctk.CTkLabel(manual_window, text="Manual Classification Interface")
         label.pack(pady=5)
 
-
-        destination_folder = os.path.join(self.output_folder_base, self.manual_review_folder)
+        destination_folder = os.path.join(output_folder_base, uncategorized_folder)
 
         # Fetch list of unclassified documents
         unclassified_files = os.listdir(destination_folder)
@@ -259,16 +269,18 @@ class App(ctk.CTk):
             selected_file = file_var.get()
             selected_folder = folder_var.get()
             src_path = os.path.join(destination_folder, selected_file)
-            dst_path = os.path.join(self.output_folder_base, selected_folder, selected_file)
+            dst_path = os.path.join(output_folder_base, selected_folder, selected_file)
             os.makedirs(os.path.dirname(dst_path), exist_ok=True)
-            shutil.move(src_path, dst_path)
-            self.update_log(f"Manually classified and moved: {selected_file} to {selected_folder}", "INFO")
+            
             
             text = extract_text_from_pdf(src_path)
             if not text.strip():  # If no text, use OCR
                 text = ocr_image_from_pdf(src_path)
             summary = get_summary(text)
             save_document_info(selected_file, selected_folder, summary)
+            
+            shutil.move(src_path, dst_path)
+            self.update_log(f"Manually classified and moved: {selected_file} to {selected_folder}", "INFO")
             #   manual_window.destroy()
 
         # Save Button

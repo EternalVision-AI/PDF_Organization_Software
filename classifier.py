@@ -30,23 +30,42 @@ setup_database()
 config = load_config("config.json")
 categories = config.get("categories", [])
     
+def fetch_all_categories_and_summaries():
+    """ Fetch all categories and summaries from the database. """
+    conn = sqlite3.connect('documents.db')
+    c = conn.cursor()
+    c.execute('SELECT category, summary FROM documents')
+    all_data = c.fetchall()
+    conn.close()
+    return all_data
+    
 def create_prompt(content, categories):
-    """ Generate a detailed prompt for the model. """
+    """ Generate a detailed prompt for the model including references to historical data. """
+    all_data = fetch_all_categories_and_summaries()
+    historical_context = ""
+    for category, summary in all_data:
+        historical_context += f"Summary: {summary}, Category: {category}\n"
+        
     categories_str = ', '.join(categories)
     prompt = f"""
-    # Task
+    ### Historical Data ###
+    Below is historical context to aid in categorization:
+    {historical_context}
+    
+    ### Task ###
+    You are a categorization expert. Analyze the provided document content and determine the most appropriate category. 
     Categorize the provided document content based on the following predefined categories:
     {categories_str}
 
     Provide your answer as the category name only. If no suitable category is found, respond with 'Uncategorized'.
 
-    # Document Content
+    ### Document Content ###
     {content}
 
-    # Categories
+    ### Categories ###
     {categories_str}
 
-    # Instruction
+    ### Instruction ###
     Provide your answer as the category name only without any additional text.
     """
     return prompt
