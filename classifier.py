@@ -82,8 +82,9 @@ def create_summary_prompt(content, num_sentences):
     """
     return (
         f"### Instruction ###\n"
-        f"You are an expert summarizer. Summarize the given content into exactly {num_sentences} sentences.\n"
-        f"Make sure the summary is concise, accurate, and captures the key points effectively.\n"
+        f"You are an expert summarizer. Your task is to summarize the given content into exactly {num_sentences} sentences. "
+        f"If the content contains dates, ensure they are preserved and incorporated effectively in the summary. "
+        f"Your summary should be concise, accurate, and encapsulate the main points clearly.\n"
         f"### Content ###\n"
         f"{content.strip()}\n"
         f"### Output ###\n"

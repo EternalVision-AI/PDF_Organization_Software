@@ -77,7 +77,14 @@ class FolderMonitor(FileSystemEventHandler):
         if not event.is_directory:
             self.app.update_log(f"File {os.path.basename(event.src_path)} is added.", "DEBUG")
             # Start a new thread for processing the file
-            threading.Thread(target=self.handle_file, args=(event.src_path,)).start()
+            # threading.Thread(target=self.handle_file, args=(event.src_path,)).start()
+            time.sleep(1)  # Simulate delay
+            result, category = process_file(event.src_path)
+            if category == "Uncategorized":
+                beep_sound.play()
+                self.app.update_log(f"⚠️⚠️⚠️ {result} ⚠️⚠️⚠️", "ERROR")
+            else:
+                self.app.update_log(f"✔️ {result}", "INFO")
 
     def handle_file(self, file_path):
         time.sleep(1)  # Simulate delay
@@ -194,7 +201,8 @@ class App(ctk.CTk):
         if found_files:
             for filename, category, summary in found_files:
                 # Format the result as "Category -> Filename: Summary"
-                result = f"{category} -> {filename}: {summary}"
+                result = f"{category} -> {filename}"
+                # result = f"{category} -> {filename}: {summary}"
                 self.search_results.insert(tk.END, result)  # Add files to the listbox
         else:
             self.search_results.insert(tk.END, "No documents found.")
@@ -203,7 +211,12 @@ class App(ctk.CTk):
         try:
             selected_index = self.search_results.curselection()[0]  # Get index of the selected item
             selected_file = self.search_results.get(selected_index)  # Get the file path from the listbox
-            webbrowser.open(selected_file)  # Open the file with the default PDF viewer or web browser
+            folder = selected_file.split(" -> ")[0]
+            file = selected_file.split(" -> ")[1]
+            file_path = folder + "\\" + file
+            file_path = os.path.join(output_folder_base, file_path)
+            
+            webbrowser.open(file_path)  # Open the file with the default PDF viewer or web browser
         except IndexError:
             print("No file selected")
 
