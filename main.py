@@ -5,7 +5,7 @@ import time
 import json
 import pygame
 import tkinter as tk
-from tkinter import ttk, filedialog
+from tkinter import ttk, filedialog, messagebox
 import customtkinter as ctk
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
@@ -22,9 +22,13 @@ pygame.mixer.init()
 # Load the sound
 beep_sound = pygame.mixer.Sound('beep.wav')  # Path to your sound file
 
-# Load the JSON file
-with open("config.json", "r") as file:
-    config = json.load(file)
+CONFIG_PATH = "config.json"
+# Load existing categories from config.json
+if os.path.exists(CONFIG_PATH):
+    with open(CONFIG_PATH, "r") as file:
+        config = json.load(file)
+else:
+    config = {"categories": []}
 
 # Access the categories array
 categories = config.get("categories", [])
@@ -234,55 +238,53 @@ class App(ctk.CTk):
         # Open a new window to handle manual classification
         manual_window = ctk.CTkToplevel(self)
         manual_window.title("Manual Classification")
-        manual_window.geometry("300x400")
-        
+        manual_window.geometry("600x400")
+        # Create two horizontal frames
+        left_frame = ctk.CTkFrame(manual_window)
+        left_frame.pack(side='left', fill='y', expand=True, padx=10, pady=10)
+
+        right_frame = ctk.CTkFrame(manual_window)
+        right_frame.pack(side='right', fill='y', expand=True, padx=10, pady=10)
         # Set this window as the topmost window with modal effects
         manual_window.grab_set()
-
         # Make sure the window stays on top of its parent window
         manual_window.transient(self)
-
-        label = ctk.CTkLabel(manual_window, text="Manual Classification Interface")
-        label.pack(pady=5)
-
         destination_folder = os.path.join(output_folder_base, uncategorized_folder)
-
         # Fetch list of unclassified documents
         unclassified_files = os.listdir(destination_folder)
         if not unclassified_files:
-            ctk.CTkLabel(manual_window, text="No documents to classify").pack(fill='x', padx=5, pady=5)
+            ctk.CTkLabel(left_frame, text="No documents to classify").pack(fill='x', padx=5, pady=5)
             return
         
             
         # Dropdown for selecting the document
-        file_var = ctk.StringVar(manual_window)
+        file_var = ctk.StringVar(left_frame)
         file_var.set(unclassified_files[0])
-        file_dropdown = ctk.CTkOptionMenu(manual_window, variable=file_var, values=unclassified_files)
+        file_dropdown = ctk.CTkOptionMenu(left_frame, variable=file_var, values=unclassified_files)
         file_dropdown.pack(fill='x', padx=5, pady=5)
 
         # Function to open the selected file.
         def open_file():
             selected_file = file_var.get()
-            selected_folder = folder_var.get()
+            selected_category = category_var.get()
             src_path = os.path.join(destination_folder, selected_file)
             webbrowser.open(src_path)
             
-        open_file_button = ctk.CTkButton(manual_window, text="Open File", command=open_file)
+        open_file_button = ctk.CTkButton(left_frame, text="Open File", command=open_file)
         open_file_button.pack(fill='x', padx=5, pady=5)
 
-        # Dropdown for folder selection
-        folder_var = ctk.StringVar(manual_window)
-        folder_var.set("Uncategorized")
-        folder_options = categories  # Add more categories as required
-        folder_dropdown = ctk.CTkOptionMenu(manual_window, variable=folder_var, values=folder_options)
-        folder_dropdown.pack(fill='x', padx=5, pady=5)
+        category_var = ctk.StringVar(left_frame)
+        category_var.set("Uncategorized")
+        category_options = categories  # Add more categories as required
+        category_dropdown = ctk.CTkOptionMenu(left_frame, variable=category_var, values=category_options)
+        category_dropdown.pack(fill='x', padx=5, pady=5)
 
         # Function to handle saving the classification
         def save_classification():
             selected_file = file_var.get()
-            selected_folder = folder_var.get()
+            selected_category = category_var.get()
             src_path = os.path.join(destination_folder, selected_file)
-            dst_path = os.path.join(output_folder_base, selected_folder, selected_file)
+            dst_path = os.path.join(output_folder_base, selected_category, selected_file)
             os.makedirs(os.path.dirname(dst_path), exist_ok=True)
             
             
@@ -290,15 +292,122 @@ class App(ctk.CTk):
             if not text.strip():  # If no text, use OCR
                 text = ocr_image_from_pdf(src_path)
             summary = get_summary(text)
-            save_document_info(selected_file, selected_folder, summary)
+            save_document_info(selected_file, selected_category, summary)
             
             shutil.move(src_path, dst_path)
-            self.update_log(f"Manually classified and moved: {selected_file} to {selected_folder}", "INFO")
+            self.update_log(f"Manually classified and moved: {selected_file} to {selected_category}", "INFO")
             #   manual_window.destroy()
 
         # Save Button
-        save_button = ctk.CTkButton(manual_window, text="Save Classification", command=save_classification)
+        save_button = ctk.CTkButton(left_frame, text="Save Classification", command=save_classification)
         save_button.pack(fill='x', padx=5, pady=5)
+        
+        # Configure the parent frame to allow column resizing
+        right_frame.grid_columnconfigure(0, weight=1)  # Make column 0 resizable
+        right_frame.grid_columnconfigure(1, weight=1)  # Make column 1 resizable
+        
+        # Add Label
+        add_label = ctk.CTkLabel(right_frame, text="Add Custom Category")
+        add_label.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+
+        # Category Entry
+        category_entry = ctk.CTkEntry(right_frame, placeholder_text="Custom Category")
+        category_entry.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+
+        # Function to save the custom category
+        def add_custom():
+            category = category_entry.get()
+            if category and category not in config["categories"]:
+                config["categories"].append(category)
+                with open(CONFIG_PATH, "ew") as file:
+                    json.dump(config, file, indent=4)
+                # Update the dropdown with new values
+                category_dropdown.configure(values=config["categories"])
+                category_var.set(category)  # Optionally set the new category as selected
+                messagebox.showinfo("Success", f"Category '{category}' added successfully!")
+            elif not category:
+                messagebox.showwarning("Warning", "Category name cannot be empty!")
+            else:
+                messagebox.showerror("Error", f"Category '{category}' already exists.")
+
+        # Add Button
+        add_button = ctk.CTkButton(right_frame, text="Add Category", command=add_custom)
+        add_button.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+
+        # Edit Label
+        edit_label = ctk.CTkLabel(right_frame, text="Update/Delete Category")
+        edit_label.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+
+        # Categories Dropdown
+        categories_var = ctk.StringVar(right_frame)
+        categories_var.set("Uncategorized")
+        categories_dropdown = ctk.CTkOptionMenu(right_frame, variable=categories_var, values=config["categories"])
+        categories_dropdown.grid(row=4, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+
+        # Update Entry
+        update_entry = ctk.CTkEntry(right_frame, placeholder_text="Uncategorized")
+        update_entry.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+
+        # Function to populate the update entry with selected category
+        def populate_update_entry(*args):
+            selected_category = categories_var.get()
+            update_entry.delete(0, 'end')
+            update_entry.insert(0, selected_category)
+
+        categories_var.trace_add("write", populate_update_entry)
+
+        # Function to update the selected category
+        def update_category():
+            selected_category = categories_var.get()
+            updated_category = update_entry.get()
+            
+            if not updated_category:
+                messagebox.showwarning("Warning", "Updated category name cannot be empty!")
+                return
+            
+            if selected_category in config["categories"]:
+                index = config["categories"].index(selected_category)
+                config["categories"][index] = updated_category
+                
+                with open(CONFIG_PATH, "w") as file:
+                    json.dump(config, file, indent=4)
+                
+                # Update dropdown with new values
+                categories_dropdown.configure(values=config["categories"])
+                categories_var.set(updated_category)  # Set updated category as selected
+                messagebox.showinfo("Success", f"Category '{selected_category}' updated to '{updated_category}' successfully!")
+            else:
+                messagebox.showerror("Error", f"Category '{selected_category}' not found.")
+
+        # Update Button
+        update_button = ctk.CTkButton(right_frame, text="Update", command=update_category)
+        update_button.grid(row=6, column=0, columnspan=1, padx=5, pady=5, sticky="ew")
+
+        # Function to delete the selected category
+        def delete_category():
+            selected_category = categories_var.get()
+            
+            if selected_category in config["categories"]:
+                config["categories"].remove(selected_category)
+                
+                with open(CONFIG_PATH, "w") as file:
+                    json.dump(config, file, indent=4)
+                
+                # Update dropdown with new values
+                categories_dropdown.configure(values=config["categories"])
+                categories_var.set("Uncategorized")  # Reset selection
+                update_entry.delete(0, 'end')  # Clear the entry field
+                messagebox.showinfo("Success", f"Category '{selected_category}' deleted successfully!")
+            else:
+                messagebox.showerror("Error", f"Category '{selected_category}' not found.")
+
+        # Delete Button
+        delete_button = ctk.CTkButton(right_frame, text="Delete", command=delete_category)
+        delete_button.grid(row=6, column=1, columnspan=1, padx=5, pady=5, sticky="ew")
+
+
+        
+
 
 
 if __name__ == "__main__":
