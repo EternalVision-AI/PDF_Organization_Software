@@ -1,5 +1,26 @@
-__pycache__
+# Ignore Python bytecode
+__pycache__/
+*.py[cod]
+
+# Ignore input, output, and other temporary or generated directories
 input/
 original/
 output/
+
+# Ignore configuration files
 config.json
+
+# Ignore virtual environment directories
+venv/
+env/
+.virtualenv/
+
+# Ignore system-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore IDE/project-specific files
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
