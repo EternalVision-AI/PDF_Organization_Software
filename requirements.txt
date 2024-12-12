@@ -1,0 +1,7 @@
+langchain_ollama
+pygame
+customtkinter
+watchdog
+pytesseract
+Pillow
+PyMuPDF
