@@ -2,6 +2,8 @@ import os
 import shutil
 import threading
 import time
+from datetime import datetime
+import csv
 import json
 import pygame
 import tkinter as tk
@@ -164,6 +166,28 @@ class App(ctk.CTk):
     def update_log(self, message, msg_type = "orange"):
         self.log.insert(tk.END, message + "\n", msg_type)
         self.log.yview(tk.END)
+         # Generate current timestamp
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        
+        csv_file = 'log_trace.csv'
+        csv_headers = ['Timestamp', 'Message', 'Message_Type']
+        
+        # Initialize the CSV file with headers if it doesn't exist
+        if not os.path.isfile(csv_file):
+            with open(csv_file, mode='w', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                writer.writerow(csv_headers)
+        
+        # Append the log entry to the CSV file
+        try:
+            with open(csv_file, mode='a', newline='', encoding='utf-8') as file:
+                writer = csv.writer(file)
+                writer.writerow([timestamp, message, msg_type])
+        except Exception as e:
+            # Handle exceptions (e.g., file write errors)
+            error_message = f"Failed to write log to CSV: {e}"
+            self.log.insert(tk.END, error_message + "\n", "red")
+            self.log.yview(tk.END)
 
     def browse_input_folder(self):
         folder_selected = filedialog.askdirectory()
@@ -404,10 +428,6 @@ class App(ctk.CTk):
         # Delete Button
         delete_button = ctk.CTkButton(right_frame, text="Delete", command=delete_category)
         delete_button.grid(row=6, column=1, columnspan=1, padx=5, pady=5, sticky="ew")
-
-
-        
-
 
 
 if __name__ == "__main__":

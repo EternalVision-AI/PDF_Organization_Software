@@ -53,11 +53,11 @@ def create_prompt(content, categories):
     {historical_context}
     
     ### Task ###
-    You are a categorization expert. Analyze the provided document content and determine the most appropriate category. 
-    Categorize the provided document content based on the following predefined categories:
+    You are a categorization expert. Analyze the provided document content and determine the most appropriate german category. 
+    Categorize the provided document content based on the following predefined german categories:
     {categories_str}
 
-    Provide your answer as the category name only. If no suitable category is found, respond with 'Uncategorized'.
+    Provide your answer as the german category name only. If no suitable category is found, respond with 'Uncategorized'.
 
     ### Document Content ###
     {content}
@@ -66,7 +66,7 @@ def create_prompt(content, categories):
     {categories_str}
 
     ### Instruction ###
-    Provide your answer as the category name only without any additional text.
+    Provide your answer as the german category name only without any additional text.
     """
     return prompt
 
@@ -82,17 +82,15 @@ def create_summary_prompt(content, num_sentences):
     """
     return (
         f"### Instruction ###\n"
-        f"You are an expert summarizer. Your task is to summarize the given content into exactly {num_sentences} sentences. "
+        f"You are an expert summarizer. Your task is to summarize the given content into exactly {num_sentences} sentences in german. "
         f"If the content contains dates, ensure they are preserved and incorporated effectively in the summary. "
-        f"Your summary should be concise, accurate, and encapsulate the main points clearly.\n"
+        f"Your german summary should be concise, accurate, and encapsulate the main points clearly in german.\n"
         f"### Content ###\n"
         f"{content.strip()}\n"
-        f"### Output ###\n"
-        f"[Start your summary here:]\n"
     )
 
 
-def get_summary(content, num_sentences=1):
+def get_summary(content, num_sentences=3):
     """ Generate a summary"""
     prompt = create_summary_prompt(content, num_sentences)
     response = llm.invoke(prompt)
