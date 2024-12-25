@@ -84,7 +84,7 @@ class FolderMonitor(FileSystemEventHandler):
             self.app.update_log(f"File {os.path.basename(event.src_path)} is added.", "DEBUG")
             # Start a new thread for processing the file
             # threading.Thread(target=self.handle_file, args=(event.src_path,)).start()
-            time.sleep(1)  # Simulate delay
+            time.sleep(5)  # Simulate delay
             result, category = process_file(event.src_path)
             if category == "Uncategorized":
                 beep_sound.play()
@@ -265,25 +265,31 @@ class App(ctk.CTk):
         manual_window.geometry("600x400")
         # Create two horizontal frames
         left_frame = ctk.CTkFrame(manual_window)
-        left_frame.pack(side='left', fill='y', expand=True, padx=10, pady=10)
+        left_frame.pack(side='left', fill='both', expand=True, padx=10, pady=10)
 
         right_frame = ctk.CTkFrame(manual_window)
-        right_frame.pack(side='right', fill='y', expand=True, padx=10, pady=10)
+        right_frame.pack(side='right', fill='both', expand=True, padx=10, pady=10)
         # Set this window as the topmost window with modal effects
         manual_window.grab_set()
         # Make sure the window stays on top of its parent window
         manual_window.transient(self)
         destination_folder = os.path.join(output_folder_base, uncategorized_folder)
+        # Ensure the destination folder exists
+        if not os.path.exists(destination_folder):
+            os.makedirs(destination_folder)  # Create the directory because it doesn't exist
         # Fetch list of unclassified documents
         unclassified_files = os.listdir(destination_folder)
-        if not unclassified_files:
-            ctk.CTkLabel(left_frame, text="No documents to classify").pack(fill='x', padx=5, pady=5)
-            return
+        # if not unclassified_files:
+        #     ctk.CTkLabel(left_frame, text="No documents to classify").pack(fill='x', padx=5, pady=5)
+        #     return
         
             
         # Dropdown for selecting the document
         file_var = ctk.StringVar(left_frame)
-        file_var.set(unclassified_files[0])
+        if(len(unclassified_files) != 0):
+            file_var.set(unclassified_files[0])
+        else:
+            file_var.set('No unclassified files')
         file_dropdown = ctk.CTkOptionMenu(left_frame, variable=file_var, values=unclassified_files)
         file_dropdown.pack(fill='x', padx=5, pady=5)
 
