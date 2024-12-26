@@ -1,9 +1,9 @@
 {
-    "categories": [
-        "Schule",
-        "Versicherung",
-        "Immobile - Hertastr",
-        "Immobile - Saarbrückerplatz",
-        "Auto"
-    ]
+    "categories": {
+        "Schule": "D:\\@Final_Projects\\PDF_Organization_Software\\Output\\Schule",
+        "Versicherung": "D:\\@Final_Projects\\PDF_Organization_Software\\Output\\Versicherung",
+        "Immobile - Hertastr": "D:\\@Final_Projects\\PDF_Organization_Software\\Output\\Immobile - Hertastr",
+        "Immobile - Saarbr\u00fcckerplatz": "D:\\@Final_Projects\\PDF_Organization_Software\\Output\\Immobile - Saarbr\u00fcckerplatz",
+        "Auto": "D:\\@Final_Projects\\PDF_Organization_Software\\Output\\Auto"
+    }
 }

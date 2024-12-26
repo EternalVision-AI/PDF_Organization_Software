@@ -14,3 +14,55 @@
 2024-12-06 16:55:04,File Uncategorized.pdf is added.,DEBUG
 2024-12-06 16:56:54,✔️ Processed and moved: Uncategorized.pdf to Versicherung,INFO
 2024-12-22 16:10:08,🔎 Monitoring...,WARNING
+2024-12-26 12:54:59,Manually classified and moved: Scan_16032024_170828_000596.pdf to Versicherung,INFO
+2024-12-26 13:00:47,🔎 Monitoring...,WARNING
+2024-12-26 13:00:53,Training...: Uncategorized.pdf to Versicherung,INFO
+2024-12-26 13:01:53,Training...: Uncategorized.pdf to Versicherung,INFO
+2024-12-26 13:02:27,Manually classified and moved: Uncategorized.pdf to Versicherung,INFO
+2024-12-26 13:02:58,🔎 Monitoring...,WARNING
+2024-12-26 13:03:02,Training... No unclassified files to Uncategorized,INFO
+2024-12-26 13:06:11,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:12,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:12,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:12,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:15,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:15,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:16,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:16,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:16,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:16,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:16,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:16,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:17,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:17,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:17,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:17,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:17,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:06:18,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:08:01,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:08:53,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:09:11,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:12:18,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:12:20,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 13:13:38,Training... Uncategorized.pdf to Versicherung,INFO
+2024-12-26 13:13:59,Manually classified and moved: Uncategorized.pdf to Versicherung,INFO
+2024-12-26 13:14:14,Training... No unclassified file to Uncategorized,INFO
+2024-12-26 15:21:33,🔎 Monitoring...,WARNING
+2024-12-26 15:29:19,Trained :No unclassified file to Uncategorized,INFO
+2024-12-26 15:32:30,Trained :No unclassified file to Uncategorized,INFO
+2024-12-26 15:32:32,Trained :No unclassified file to Uncategorized,INFO
+2024-12-26 15:32:38,Trained :No unclassified file to Versicherung,INFO
+2024-12-26 15:39:02,Trained :output_document.pdf to newcategory,INFO
+2024-12-26 15:39:02,Manually classified and moved: output_document.pdf to newcategory,INFO
+2024-12-26 15:42:06,Trained :output_document.pdf to newcategory,INFO
+2024-12-26 15:42:06,Manually classified and moved: output_document.pdf to newcategory,INFO
+2024-12-26 15:42:55,Trained :output_document.pdf to newcategory,INFO
+2024-12-26 15:42:55,Manually classified and moved: output_document.pdf to newcategory,INFO
+2024-12-26 15:47:50,🔎 Monitoring...,WARNING
+2024-12-26 15:48:06,File output_document.pdf is added.,DEBUG
+2024-12-26 16:12:21,🔎 Monitoring...,WARNING
+2024-12-26 16:12:23,File output_document.pdf is added.,DEBUG
+2024-12-26 16:24:34,🔎 Monitoring...,WARNING
+2024-12-26 16:24:37,File Scan_22122024_101031_001242.pdf is added.,DEBUG
+2024-12-26 16:26:50,✔️ Processed and moved: Scan_22122024_101031_001242.pdf to Versicherung,INFO
+2024-12-26 16:26:50,File Scan_16032024_170904_000597.pdf is added.,DEBUG

@@ -18,22 +18,23 @@ import webbrowser
 import sqlite3
 
 from classifier import process_document, get_summary, save_document_info
+from utils_json import read_json_file, write_json_file, initialize_data, get_categories, get_category_folder, add_new_category, update_category_folder, update_category_name_and_folder, delete_category
 
 #  Initialize pygame mixer
 pygame.mixer.init()
 # Load the sound
 beep_sound = pygame.mixer.Sound('beep.wav')  # Path to your sound file
 
-CONFIG_PATH = "config.json"
-# Load existing categories from config.json
-if os.path.exists(CONFIG_PATH):
-    with open(CONFIG_PATH, "r") as file:
-        config = json.load(file)
+CONFIG_PATH = 'config.json'
+
+config = None
+if not os.path.exists(CONFIG_PATH):
+    config = initialize_data(CONFIG_PATH)
 else:
-    config = {"categories": []}
+    config = read_json_file(CONFIG_PATH)
 
 # Access the categories array
-categories = config.get("categories", [])
+categories = get_categories(config)
 
 # Set the global theme to 'dark' which is typically the black theme
 ctk.set_appearance_mode("dark")  # Options are "light", "dark", or "system"
@@ -66,14 +67,13 @@ def process_file(file_path):
 
     category = process_document(os.path.basename(file_path), text)
     # print(output_folder_base, category, uncategorized_folder, os.path.basename(file_path))
-    destination_folder = os.path.join(output_folder_base, category if category != "Uncategorized" else uncategorized_folder, os.path.basename(file_path))
-    try:
-      os.makedirs(os.path.dirname(destination_folder), exist_ok=True)
-    except:
-      os.makedirs(os.path.dirname(os.path.join(output_folder_base, uncategorized_folder)), exist_ok=True)
-      
-    shutil.move(file_path, destination_folder)
-    return f"Processed and moved: {os.path.basename(file_path)} to {category}", category
+    destination_folder = get_category_folder(CONFIG_PATH, category)
+    os.makedirs(os.path.dirname(destination_folder), exist_ok=True)
+    if not os.path.exists(os.path.join(destination_folder, os.path.basename(file_path))):
+        shutil.move(file_path, destination_folder)
+        return f"Processed and moved: {os.path.basename(file_path)} to {category}", category
+    else:
+        return f"File already exists: {os.path.basename(file_path)} in {category}", category
 
 class FolderMonitor(FileSystemEventHandler):
     def __init__(self, app):
@@ -262,7 +262,7 @@ class App(ctk.CTk):
         # Open a new window to handle manual classification
         manual_window = ctk.CTkToplevel(self)
         manual_window.title("Manual Classification")
-        manual_window.geometry("600x400")
+        manual_window.geometry("900x500")
         # Create two horizontal frames
         left_frame = ctk.CTkFrame(manual_window)
         left_frame.pack(side='left', fill='both', expand=True, padx=10, pady=10)
@@ -289,7 +289,7 @@ class App(ctk.CTk):
         if(len(unclassified_files) != 0):
             file_var.set(unclassified_files[0])
         else:
-            file_var.set('No unclassified files')
+            file_var.set('No unclassified file')
         file_dropdown = ctk.CTkOptionMenu(left_frame, variable=file_var, values=unclassified_files)
         file_dropdown.pack(fill='x', padx=5, pady=5)
 
@@ -298,7 +298,11 @@ class App(ctk.CTk):
             selected_file = file_var.get()
             selected_category = category_var.get()
             src_path = os.path.join(destination_folder, selected_file)
-            webbrowser.open(src_path)
+            if os.path.exists(src_path):
+                webbrowser.open(src_path)
+            else:
+                messagebox.showwarning("File Not Found", f"No unclassified file.")
+                
             
         open_file_button = ctk.CTkButton(left_frame, text="Open File", command=open_file)
         open_file_button.pack(fill='x', padx=5, pady=5)
@@ -311,22 +315,32 @@ class App(ctk.CTk):
 
         # Function to handle saving the classification
         def save_classification():
+            save_button.configure(state='disabled')
             selected_file = file_var.get()
             selected_category = category_var.get()
             src_path = os.path.join(destination_folder, selected_file)
-            dst_path = os.path.join(output_folder_base, selected_category, selected_file)
-            os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+            if selected_file != 'No unclassified file':
+                output_folder_base = get_category_folder(CONFIG_PATH, selected_category)
+                dst_path = os.path.join(output_folder_base, selected_file)
+                os.makedirs(os.path.dirname(dst_path), exist_ok=True)
             
-            
-            text = extract_text_from_pdf(src_path)
-            if not text.strip():  # If no text, use OCR
-                text = ocr_image_from_pdf(src_path)
-            summary = get_summary(text)
-            save_document_info(selected_file, selected_category, summary)
-            
-            shutil.move(src_path, dst_path)
-            self.update_log(f"Manually classified and moved: {selected_file} to {selected_category}", "INFO")
-            #   manual_window.destroy()
+                text = extract_text_from_pdf(src_path)
+                if not text.strip():  # If no text, use OCR
+                    text = ocr_image_from_pdf(src_path)
+                else:
+                    text = text.strip()  # Remove leading and trailing whitespace
+                summary = get_summary(text)
+                save_document_info(selected_file, selected_category, summary)
+                
+                shutil.move(src_path, dst_path)
+                self.update_log(f"Trained :{selected_file} to {selected_category}", "INFO")
+                self.update_log(f"Manually classified and moved: {selected_file} to {selected_category}", "INFO")
+                manual_window.destroy()
+            else:
+                messagebox.showwarning("File Not Found", f"No unclassified file.")
+                save_button.configure(state='normal')
+                
+                    
 
         # Save Button
         save_button = ctk.CTkButton(left_frame, text="Save Classification", command=save_classification)
@@ -338,51 +352,79 @@ class App(ctk.CTk):
         
         # Add Label
         add_label = ctk.CTkLabel(right_frame, text="Add Custom Category")
-        add_label.grid(row=0, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+        add_label.grid(row=0, column=0, columnspan=3, padx=5, pady=5, sticky="ew")
 
         # Category Entry
-        category_entry = ctk.CTkEntry(right_frame, placeholder_text="Custom Category")
+        category_entry = ctk.CTkEntry(right_frame, placeholder_text="New Category")
         category_entry.grid(row=1, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
-
+        
+        # Category Entry
+        category_folder_entry = ctk.CTkEntry(right_frame, placeholder_text="New Category Folder")
+        category_folder_entry.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+        def add_directory():
+            # Open a dialog to choose a directory and store the selected path
+            directory = filedialog.askdirectory()
+            if directory:  # Check if a directory was selected
+                category_folder_entry.delete(0, tk.END)  # Clear the current entry
+                category_folder_entry.insert(0, directory)  # Insert the selected directory path
+        add_folder_button = ctk.CTkButton(right_frame, text="Select Folder", command=add_directory)
+        add_folder_button.grid(row=2, column=2, padx=5, pady=5, sticky="ew")
         # Function to save the custom category
         def add_custom():
             category = category_entry.get()
-            if category and category not in config["categories"]:
-                config["categories"].append(category)
-                with open(CONFIG_PATH, "ew") as file:
-                    json.dump(config, file, indent=4)
+            category_folder = category_folder_entry.get()
+            if category and category not in category_options and category_folder:
+                category_options.append(category)
+                add_new_category(CONFIG_PATH, category, category_folder)
                 # Update the dropdown with new values
-                category_dropdown.configure(values=config["categories"])
+                category_dropdown.configure(values=category_options)
                 category_var.set(category)  # Optionally set the new category as selected
                 messagebox.showinfo("Success", f"Category '{category}' added successfully!")
             elif not category:
                 messagebox.showwarning("Warning", "Category name cannot be empty!")
+            elif not category_folder:
+                messagebox.showwarning("Warning", "Category folder name cannot be empty!")
             else:
                 messagebox.showerror("Error", f"Category '{category}' already exists.")
 
         # Add Button
         add_button = ctk.CTkButton(right_frame, text="Add Category", command=add_custom)
-        add_button.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+        add_button.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
 
         # Edit Label
         edit_label = ctk.CTkLabel(right_frame, text="Update/Delete Category")
-        edit_label.grid(row=3, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
-
+        edit_label.grid(row=4, column=0, columnspan=3, padx=5, pady=5, sticky="ew")
+        
         # Categories Dropdown
         categories_var = ctk.StringVar(right_frame)
         categories_var.set("Uncategorized")
-        categories_dropdown = ctk.CTkOptionMenu(right_frame, variable=categories_var, values=config["categories"])
-        categories_dropdown.grid(row=4, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+        categories_dropdown = ctk.CTkOptionMenu(right_frame, variable=categories_var, values=category_options)
+        categories_dropdown.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
 
         # Update Entry
         update_entry = ctk.CTkEntry(right_frame, placeholder_text="Uncategorized")
-        update_entry.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+        update_entry.grid(row=6, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+
+        # Update Output Folder Entry
+        update_output_entry = ctk.CTkEntry(right_frame, placeholder_text="Uncategorized Folder")
+        update_output_entry.grid(row=7, column=0, columnspan=2, padx=5, pady=5, sticky="ew")
+        def select_directory():
+            # Open a dialog to choose a directory and store the selected path
+            directory = filedialog.askdirectory()
+            if directory:  # Check if a directory was selected
+                update_output_entry.delete(0, tk.END)  # Clear the current entry
+                update_output_entry.insert(0, directory)  # Insert the selected directory path
+        select_folder_button = ctk.CTkButton(right_frame, text="Select Folder", command=select_directory)
+        select_folder_button.grid(row=7, column=2, padx=5, pady=5, sticky="ew")
 
         # Function to populate the update entry with selected category
         def populate_update_entry(*args):
             selected_category = categories_var.get()
+            selected_category_folder = get_category_folder(CONFIG_PATH, selected_category)
             update_entry.delete(0, 'end')
             update_entry.insert(0, selected_category)
+            update_output_entry.delete(0, 'end')
+            update_output_entry.insert(0, selected_category_folder)
 
         categories_var.trace_add("write", populate_update_entry)
 
@@ -390,20 +432,20 @@ class App(ctk.CTk):
         def update_category():
             selected_category = categories_var.get()
             updated_category = update_entry.get()
+            update_output = update_output_entry.get()
             
             if not updated_category:
                 messagebox.showwarning("Warning", "Updated category name cannot be empty!")
                 return
             
-            if selected_category in config["categories"]:
-                index = config["categories"].index(selected_category)
-                config["categories"][index] = updated_category
+            if selected_category in category_options:
+                index = category_options.index(selected_category)
+                category_options[index] = updated_category
                 
-                with open(CONFIG_PATH, "w") as file:
-                    json.dump(config, file, indent=4)
+                update_category_name_and_folder(CONFIG_PATH, selected_category, updated_category, update_output)
                 
                 # Update dropdown with new values
-                categories_dropdown.configure(values=config["categories"])
+                categories_dropdown.configure(values=category_options)
                 categories_var.set(updated_category)  # Set updated category as selected
                 messagebox.showinfo("Success", f"Category '{selected_category}' updated to '{updated_category}' successfully!")
             else:
@@ -411,20 +453,19 @@ class App(ctk.CTk):
 
         # Update Button
         update_button = ctk.CTkButton(right_frame, text="Update", command=update_category)
-        update_button.grid(row=6, column=0, columnspan=1, padx=5, pady=5, sticky="ew")
+        update_button.grid(row=8, column=0, columnspan=1, padx=5, pady=5, sticky="ew")
 
         # Function to delete the selected category
-        def delete_category():
+        def delete_selected_category():
             selected_category = categories_var.get()
             
-            if selected_category in config["categories"]:
-                config["categories"].remove(selected_category)
+            if selected_category in category_options:
+                category_options.remove(selected_category)
                 
-                with open(CONFIG_PATH, "w") as file:
-                    json.dump(config, file, indent=4)
+                delete_category(CONFIG_PATH, selected_category)
                 
                 # Update dropdown with new values
-                categories_dropdown.configure(values=config["categories"])
+                categories_dropdown.configure(values=category_options)
                 categories_var.set("Uncategorized")  # Reset selection
                 update_entry.delete(0, 'end')  # Clear the entry field
                 messagebox.showinfo("Success", f"Category '{selected_category}' deleted successfully!")
@@ -432,8 +473,8 @@ class App(ctk.CTk):
                 messagebox.showerror("Error", f"Category '{selected_category}' not found.")
 
         # Delete Button
-        delete_button = ctk.CTkButton(right_frame, text="Delete", command=delete_category)
-        delete_button.grid(row=6, column=1, columnspan=1, padx=5, pady=5, sticky="ew")
+        delete_button = ctk.CTkButton(right_frame, text="Delete", command=delete_selected_category)
+        delete_button.grid(row=8, column=1, columnspan=1, padx=5, pady=5, sticky="ew")
 
 
 if __name__ == "__main__":

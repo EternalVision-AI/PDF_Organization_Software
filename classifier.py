@@ -1,6 +1,8 @@
 import sqlite3
 from langchain_ollama import OllamaLLM
 import json
+import os
+from utils_json import read_json_file, write_json_file, initialize_data, get_categories, get_category_folder, add_new_category, update_category_folder, update_category_name_and_folder, delete_category
 
 # Ensure necessary NLTK resources are downloaded
 """ Use the LLaMA model to categorize the document. """
@@ -20,15 +22,19 @@ def setup_database():
     conn.commit()
     conn.close()
 
-def load_config(file_path):
+def load_config(CONFIG_PATH):
     """ Load the configuration from a JSON file. """
-    with open(file_path, "r") as file:
-        config = json.load(file)
+    config = None
+    if not os.path.exists(CONFIG_PATH):
+        config = initialize_data(CONFIG_PATH)
+    else:
+        config = read_json_file(CONFIG_PATH)
     return config
 
 setup_database()
 config = load_config("config.json")
-categories = config.get("categories", [])
+# Access the categories array
+categories = get_categories(config)
     
 def fetch_all_categories_and_summaries():
     """ Fetch all categories and summaries from the database. """
